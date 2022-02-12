@@ -1,8 +1,8 @@
 package user
 
 import (
+	"emwell/internal/core/user/repository"
 	"emwell/internal/logger"
-	"emwell/internal/user/repository"
 )
 
 type Manager struct {

@@ -14,7 +14,7 @@ func NewMenuHandler() *Handler {
 }
 
 func (h *Handler) CanHandle(upd entities.Update) bool {
-	msg, ok := upd.Message()
+	msg, ok := upd.Payload().(entities.Message)
 	if !ok {
 		return false
 	}

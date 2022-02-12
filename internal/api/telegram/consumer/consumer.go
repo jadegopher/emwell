@@ -51,7 +51,10 @@ func (e *EventConsumer) StartConsuming(ctx context.Context) chan entities.Update
 		defer e.wg.Done()
 		for {
 			select {
-			case update := <-updates:
+			case update, isOpened := <-updates:
+				if !isOpened {
+					return
+				}
 				e.logger.InfoKV(ctx, "Got new update", "update", update)
 				upd, ok := e.convertUpdate(ctx, update)
 				if ok {
@@ -80,49 +83,95 @@ func (e *EventConsumer) gracefulStop() {
 }
 
 func (e *EventConsumer) convertUpdate(ctx context.Context, update tgbotapi.Update) (entities.Update, bool) {
-	result := entities.Update(nil)
-	err := error(nil)
-
 	if update.Message != nil {
-		if update.Message.From == nil && update.Message.Chat == nil {
-			return nil, false
-		}
-		result, err = entities.NewUpdate(
-			int64(update.UpdateID),
-			entities.UpdateTypeMessage,
-			entities.Sender{
-				ID:           update.Message.From.ID,
-				FirstName:    update.Message.From.FirstName,
-				LastName:     update.Message.From.LastName,
-				UserName:     update.Message.From.UserName,
-				LanguageCode: update.Message.From.LanguageCode,
-			},
-			update.Message.Chat.ID,
-			nil,
-			entities.Message{
-				ID: int64(update.Message.MessageID),
-				From: entities.Sender{
-					ID:           update.Message.From.ID,
-					FirstName:    update.Message.From.FirstName,
-					LastName:     update.Message.From.LastName,
-					UserName:     update.Message.From.UserName,
-					LanguageCode: update.Message.From.LanguageCode,
-				},
-				Chat: entities.Chat{
-					ID: update.Message.Chat.ID,
-				},
-				Text: update.Message.Text,
-			},
-		)
-		if err != nil {
-			e.logger.ErrorKV(ctx, "Error convert update", "err", err)
-			return nil, false
-		}
+		return e.toMessage(ctx, update)
 	}
 
-	if result == nil {
+	if update.CallbackQuery != nil {
+		return e.toCallback(ctx, update)
+	}
+
+	return nil, false
+}
+
+func (e *EventConsumer) toMessage(ctx context.Context, update tgbotapi.Update) (entities.Update, bool) {
+	if update.Message.From == nil && update.Message.Chat == nil {
+		return nil, false
+	}
+	result, err := entities.NewUpdate(
+		int64(update.UpdateID),
+		entities.UpdateTypeMessage,
+		fromToSender(update.Message.From),
+		nil,
+		convertMessage(update.Message),
+	)
+	if err != nil {
+		e.logger.ErrorKV(ctx, "Error convert update", "err", err)
 		return nil, false
 	}
 
 	return result, true
+}
+
+func (e *EventConsumer) toCallback(ctx context.Context, update tgbotapi.Update) (entities.Update, bool) {
+	if update.CallbackQuery.From == nil {
+		return nil, false
+	}
+
+	result, err := entities.NewUpdate(
+		int64(update.UpdateID),
+		entities.UpdateTypeCallback,
+		fromToSender(update.CallbackQuery.From),
+		nil,
+		entities.Callback{
+			ID:              update.CallbackQuery.ID,
+			From:            fromToSender(update.CallbackQuery.From),
+			Message:         convertMessage(update.CallbackQuery.Message),
+			InlineMessageID: update.CallbackQuery.InlineMessageID,
+			Data:            update.CallbackQuery.Data,
+		},
+	)
+	if err != nil {
+		e.logger.ErrorKV(ctx, "Error convert update", "err", err)
+		return nil, false
+	}
+
+	return result, true
+}
+
+func fromToSender(from *tgbotapi.User) entities.Sender {
+	if from == nil {
+		return entities.Sender{}
+	}
+
+	return entities.Sender{
+		ID:           from.ID,
+		FirstName:    from.FirstName,
+		LastName:     from.LastName,
+		UserName:     from.UserName,
+		LanguageCode: from.LanguageCode,
+	}
+}
+
+func convertMessage(message *tgbotapi.Message) entities.Message {
+	if message == nil {
+		return entities.Message{}
+	}
+
+	return entities.Message{
+		ID:   int64(message.MessageID),
+		From: fromToSender(message.From),
+		Chat: convertChat(message.Chat),
+		Text: message.Text,
+	}
+}
+
+func convertChat(chat *tgbotapi.Chat) entities.Chat {
+	if chat == nil {
+		return entities.Chat{}
+	}
+
+	return entities.Chat{
+		ID: chat.ID,
+	}
 }

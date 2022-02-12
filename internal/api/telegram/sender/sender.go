@@ -12,7 +12,7 @@ import (
 )
 
 type Sender interface {
-	Send(ctx context.Context, toChatID int64, response handlers.Response) error
+	Send(ctx context.Context, response handlers.Response) error
 }
 
 var (
@@ -36,24 +36,45 @@ func NewReplySender(logger logger.ILogger, token string) (*ReplySender, error) {
 	}, nil
 }
 
-func (r *ReplySender) Send(ctx context.Context, toChatID int64, response handlers.Response) error {
-	_, err := r.bot.Send(responseToChattable(toChatID, response))
+func (r *ReplySender) Send(ctx context.Context, response handlers.Response) error {
+	chattableResponse, err := responseToChattable(response)
 	if err != nil {
-		r.logger.ErrorKV(ctx, "Send reply error", "chat_id", toChatID, "err", err)
+		return err
+	}
+	_, err = r.bot.Request(chattableResponse)
+	if err != nil {
+		r.logger.ErrorKV(ctx, "Send reply error", "err", err)
 		return errors.Wrap(ErrSendReply, err.Error())
 	}
 
 	return nil
 }
 
-func responseToChattable(chatID int64, response handlers.Response) tgbotapi.Chattable {
-	msg := tgbotapi.NewMessage(chatID, response.Text)
+func responseToChattable(response handlers.Response) (tgbotapi.Chattable, error) {
+	switch response.Type() {
+	case handlers.ResponseTypeMessage:
+		payload, ok := response.Payload().(handlers.MessagePayload)
+		if !ok {
+			return nil, errors.New("message payload incorrect type")
+		}
+		msg := tgbotapi.NewMessage(payload.ToChatID, payload.Text)
 
-	if len(response.Buttons) != 0 {
-		msg.ReplyMarkup = convertKeyBoard(response.Buttons)
+		if len(payload.Buttons) != 0 {
+			msg.ReplyMarkup = convertKeyBoard(payload.Buttons)
+		}
+
+		return msg, nil
+	case handlers.ResponseTypeCallback:
+		payload, ok := response.Payload().(handlers.CallbackPayload)
+		if !ok {
+			return nil, errors.New("message payload incorrect type")
+		}
+		callback := tgbotapi.NewCallback(payload.CallbackID, payload.Text)
+
+		return callback, nil
+	default:
+		return nil, errors.New("unknown type")
 	}
-
-	return msg
 }
 
 func convertKeyBoard(buttons [][]handlers.Button) tgbotapi.InlineKeyboardMarkup {

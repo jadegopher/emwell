@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"emwell/internal/api/telegram/consumer/entities"
+	"emwell/internal/core/user"
+	"emwell/internal/core/user/entites"
 	"emwell/internal/logger"
-	"emwell/internal/user"
-	"emwell/internal/user/entites"
 )
 
 type Middleware struct {
@@ -37,7 +37,6 @@ func (m *Middleware) Serve(ctx context.Context, upd entities.Update) (entities.U
 		upd.ID(),
 		upd.Type(),
 		senderInfo,
-		upd.ChatID(),
 		&userInfo,
 		upd.Payload(),
 	)

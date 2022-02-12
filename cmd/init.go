@@ -10,24 +10,36 @@ import (
 	"emwell/internal/api/telegram/consumer"
 	"emwell/internal/api/telegram/handlers"
 	"emwell/internal/api/telegram/handlers/daily_routine"
+	"emwell/internal/api/telegram/handlers/daily_routine/rates"
 	"emwell/internal/api/telegram/handlers/start"
 	"emwell/internal/api/telegram/handlers/unknown"
 	"emwell/internal/api/telegram/middlewares"
 	"emwell/internal/api/telegram/middlewares/register"
 	"emwell/internal/api/telegram/sender"
 	"emwell/internal/config"
+	"emwell/internal/core/diary"
+	"emwell/internal/core/diary/entites"
+	diaryRepo "emwell/internal/core/diary/repository/psql"
+	"emwell/internal/core/user"
+	"emwell/internal/core/user/repository/psql"
 	"emwell/internal/logger"
-	"emwell/internal/user"
-	"emwell/internal/user/repository/psql"
 )
 
-func initTelegramBot(wg *sync.WaitGroup) (*telegram.Telegram, error) {
-	c, err := config.GetConfig()
+type container struct {
+	services services
+}
+
+type services struct {
+	diary *diary.Diary
+}
+
+func (c *container) InitTelegramBot(wg *sync.WaitGroup) (*telegram.Telegram, error) {
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	db, err := sql.Open("postgres", c.PostgreSQL.MasterDSN)
+	db, err := sql.Open("postgres", cfg.PostgreSQL.MasterDSN)
 	if err != nil {
 		return nil, err
 	}
@@ -41,15 +53,17 @@ func initTelegramBot(wg *sync.WaitGroup) (*telegram.Telegram, error) {
 		return nil, err
 	}
 
-	conn, err := consumer.NewEventConsumer(log, c.Telegram.Token, wg)
+	conn, err := consumer.NewEventConsumer(log, cfg.Telegram.Token, wg)
 	if err != nil {
 		return nil, err
 	}
 
-	replySender, err := sender.NewReplySender(log, c.Telegram.Token)
+	replySender, err := sender.NewReplySender(log, cfg.Telegram.Token)
 	if err != nil {
 		return nil, err
 	}
+
+	c.services.diary = diary.NewDiary(log, diaryRepo.NewRepository(db))
 
 	tg, err := telegram.NewTelegramBotAPI(
 		log,
@@ -57,11 +71,7 @@ func initTelegramBot(wg *sync.WaitGroup) (*telegram.Telegram, error) {
 		[]middlewares.Middleware{
 			register.NewMiddleware(log, user.NewManager(log, psql.NewRepository(db))),
 		},
-		[]handlers.Handler{
-			start.NewMenuHandler(),
-			daily_routine.NewDailyRoutineHandler(),
-			unknown.NewHandler(),
-		},
+		c.initHandlers(),
 		replySender,
 	)
 	if err != nil {
@@ -69,4 +79,54 @@ func initTelegramBot(wg *sync.WaitGroup) (*telegram.Telegram, error) {
 	}
 
 	return tg, nil
+}
+
+func (c *container) initHandlers() []handlers.Handler {
+	return []handlers.Handler{
+		start.NewMenuHandler(),
+		daily_routine.NewDailyRoutineHandler(),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineWorst,
+			entites.WorstEmotionalRate,
+			"Какой ужас...",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineWorse,
+			entites.WorseEmotionalRate,
+			"Эх(",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineBad,
+			entites.BadEmotionalRate,
+			"Печально(",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineNeutral,
+			entites.NeutralEmotionalRate,
+			"Нуу у всех бывает такое",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineGood,
+			entites.GoodEmotionalRate,
+			"Отлично, рад за тебя)",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineBetter,
+			entites.BetterEmotionalRate,
+			"Ура! Так держать!",
+			c.services.diary,
+		),
+		rates.NewDailyRoutineEmotionalHandler(
+			daily_routine.DailyRoutineBest,
+			entites.BestEmotionalRate,
+			"Превосходно)",
+			c.services.diary,
+		),
+		unknown.NewHandler(),
+	}
 }

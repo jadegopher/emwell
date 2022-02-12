@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"emwell/internal/user/entites"
+	"emwell/internal/core/user/entites"
 )
 
 type UserRepository interface {

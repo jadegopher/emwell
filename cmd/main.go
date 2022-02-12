@@ -14,7 +14,8 @@ func main() {
 	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	tg, err := initTelegramBot(&wg)
+	c := &container{}
+	tg, err := c.InitTelegramBot(&wg)
 	if err != nil {
 		panic(err)
 	}

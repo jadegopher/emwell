@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrCantHandle = errors.New("can't handle update")
+	ErrCantHandle       = errors.New("can't handle update")
+	ErrUserNotSpecified = errors.New("user not specified")
 )
 
 type Handler interface {
@@ -16,12 +17,15 @@ type Handler interface {
 	Handle(ctx context.Context, update entities.Update) (resp []Response, err error)
 }
 
-type Response struct {
-	Text    string
-	Buttons [][]Button
-}
+type ResponseType int8
 
-type Button struct {
-	Text string
-	Data string
+const (
+	ResponseTypeUnknown = iota
+	ResponseTypeMessage
+	ResponseTypeCallback
+)
+
+type Response interface {
+	Type() ResponseType
+	Payload() interface{}
 }

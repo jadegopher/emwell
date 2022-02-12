@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"emwell/internal/user/entites"
+	"emwell/internal/core/user/entites"
 )
 
 func (m *Manager) CreateIfNotExists(ctx context.Context, user entites.User) (result entites.User, err error) {

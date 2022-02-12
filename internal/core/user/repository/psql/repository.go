@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"emwell/internal/user/entites"
+	"emwell/internal/core/user/entites"
 )
 
 type Repository struct {

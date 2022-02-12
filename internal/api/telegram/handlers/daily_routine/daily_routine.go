@@ -7,6 +7,16 @@ import (
 	"emwell/internal/api/telegram/handlers"
 )
 
+const (
+	DailyRoutineWorst   = "daily_routine.worst"
+	DailyRoutineWorse   = "daily_routine.worse"
+	DailyRoutineBad     = "daily_routine.bad"
+	DailyRoutineNeutral = "daily_routine.neutral"
+	DailyRoutineGood    = "daily_routine.good"
+	DailyRoutineBetter  = "daily_routine.better"
+	DailyRoutineBest    = "daily_routine.best"
+)
+
 type Handler struct{}
 
 func NewDailyRoutineHandler() *Handler {
@@ -14,7 +24,7 @@ func NewDailyRoutineHandler() *Handler {
 }
 
 func (h *Handler) CanHandle(upd entities.Update) bool {
-	msg, ok := upd.Message()
+	msg, ok := upd.Payload().(entities.Message)
 	if !ok {
 		return false
 	}
@@ -31,37 +41,46 @@ func (h *Handler) Handle(_ context.Context, upd entities.Update) ([]handlers.Res
 		return nil, handlers.ErrCantHandle
 	}
 
+	msg, _ := upd.Payload().(entities.Message)
+
 	return []handlers.Response{
-		{
-			Text: "Скажи, как ты оцениваешь свой день?",
-			Buttons: [][]handlers.Button{
-				{
+		handlers.NewMessage(
+			handlers.MessagePayload{
+				ToChatID: msg.Chat.ID,
+				Text:     "Скажи, как ты оцениваешь свой день?",
+				Buttons: [][]handlers.Button{
 					{
-						Text: "🤕",
-						Data: "daily_routine.worst",
-					},
-					{
-						Text: "😪",
-						Data: "daily_routine.worse",
-					},
-					{
-						Text: "😔",
-						Data: "daily_routine.bad",
-					},
-					{
-						Text: "😌",
-						Data: "daily_routine.good",
-					},
-					{
-						Text: "☺️",
-						Data: "daily_routine.better",
-					},
-					{
-						Text: "😎",
-						Data: "daily_routine.best",
+						{
+							Text: "🤕",
+							Data: DailyRoutineWorst,
+						},
+						{
+							Text: "😪",
+							Data: DailyRoutineWorse,
+						},
+						{
+							Text: "😔",
+							Data: DailyRoutineBad,
+						},
+						{
+							Text: "😐",
+							Data: DailyRoutineNeutral,
+						},
+						{
+							Text: "😌",
+							Data: DailyRoutineGood,
+						},
+						{
+							Text: "☺️",
+							Data: DailyRoutineBetter,
+						},
+						{
+							Text: "😎",
+							Data: DailyRoutineBest,
+						},
 					},
 				},
 			},
-		},
+		),
 	}, nil
 }
