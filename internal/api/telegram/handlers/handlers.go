@@ -23,6 +23,7 @@ const (
 	ResponseTypeUnknown = iota
 	ResponseTypeMessage
 	ResponseTypeCallback
+	ResponseTypeKeyboard
 )
 
 type Response interface {

@@ -58,7 +58,7 @@ func (h *Handler) Handle(ctx context.Context, upd entities.Update) ([]handlers.R
 
 	if _, err := h.diaryService.SaveEmotionalInformation(
 		ctx,
-		entites.EmotionalDiary{
+		entites.EmotionalInfo{
 			UserID:        user.ID(),
 			EmotionalRate: h.emotionalRate,
 			ReferToDate:   time.Time{},

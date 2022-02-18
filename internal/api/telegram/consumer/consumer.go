@@ -18,7 +18,6 @@ type EventConsumer struct {
 	logger   logger.ILogger
 	bot      *tgbotapi.BotAPI
 	wg       *sync.WaitGroup
-	termCh   chan struct{}
 	updateCh chan entities.Update
 }
 
@@ -31,7 +30,6 @@ func NewEventConsumer(logger logger.ILogger, token string, wg *sync.WaitGroup) (
 	return &EventConsumer{
 		logger:   logger,
 		bot:      bot,
-		termCh:   make(chan struct{}, 1),
 		updateCh: make(chan entities.Update, 10),
 		wg:       wg,
 	}, nil
@@ -64,11 +62,6 @@ func (e *EventConsumer) StartConsuming(ctx context.Context) chan entities.Update
 				e.logger.InfoKV(ctx, "Context Done signal received. Exiting telegram bot...")
 				e.gracefulStop()
 				return
-			case <-e.termCh:
-				e.gracefulStop()
-				return
-			default:
-				continue
 			}
 		}
 	}(ctx)

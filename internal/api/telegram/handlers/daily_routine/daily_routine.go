@@ -48,7 +48,7 @@ func (h *Handler) Handle(_ context.Context, upd entities.Update) ([]handlers.Res
 			handlers.MessagePayload{
 				ToChatID: msg.Chat.ID,
 				Text:     "Скажи, как ты оцениваешь свой день?",
-				Buttons: [][]handlers.Button{
+				InlineKeyboard: [][]handlers.Button{
 					{
 						{
 							Text: "🤕",

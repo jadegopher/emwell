@@ -1,14 +1,13 @@
 package handlers
 
 type Message struct {
-	typ     ResponseType
 	payload MessagePayload
 }
 
 type MessagePayload struct {
-	ToChatID int64
-	Text     string
-	Buttons  [][]Button
+	ToChatID       int64
+	Text           string
+	InlineKeyboard [][]Button
 }
 
 type Button struct {
@@ -18,13 +17,12 @@ type Button struct {
 
 func NewMessage(payload MessagePayload) *Message {
 	return &Message{
-		typ:     ResponseTypeMessage,
 		payload: payload,
 	}
 }
 
 func (m *Message) Type() ResponseType {
-	return m.typ
+	return ResponseTypeMessage
 }
 
 func (m *Message) Payload() interface{} {

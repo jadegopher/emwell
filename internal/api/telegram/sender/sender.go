@@ -59,8 +59,8 @@ func responseToChattable(response handlers.Response) (tgbotapi.Chattable, error)
 		}
 		msg := tgbotapi.NewMessage(payload.ToChatID, payload.Text)
 
-		if len(payload.Buttons) != 0 {
-			msg.ReplyMarkup = convertKeyBoard(payload.Buttons)
+		if len(payload.InlineKeyboard) != 0 {
+			msg.ReplyMarkup = convertInlineKeyboard(payload.InlineKeyboard)
 		}
 
 		return msg, nil
@@ -77,7 +77,7 @@ func responseToChattable(response handlers.Response) (tgbotapi.Chattable, error)
 	}
 }
 
-func convertKeyBoard(buttons [][]handlers.Button) tgbotapi.InlineKeyboardMarkup {
+func convertInlineKeyboard(buttons [][]handlers.Button) tgbotapi.InlineKeyboardMarkup {
 	rows := make([][]tgbotapi.InlineKeyboardButton, len(buttons))
 	for i, row := range buttons {
 		rows[i] = make([]tgbotapi.InlineKeyboardButton, len(row))

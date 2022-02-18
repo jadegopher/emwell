@@ -1,8 +1,13 @@
 package entites
 
 import (
+	"bytes"
 	"errors"
 	"time"
+
+	"github.com/go-echarts/go-echarts/v2/charts"
+	"github.com/go-echarts/go-echarts/v2/opts"
+	"github.com/go-echarts/go-echarts/v2/types"
 )
 
 var (
@@ -22,7 +27,7 @@ const (
 	MaxEmotionalRate     = 1000
 )
 
-type EmotionalDiary struct {
+type EmotionalInfo struct {
 	id            int64
 	UserID        int64
 	EmotionalRate int32
@@ -30,8 +35,8 @@ type EmotionalDiary struct {
 	createdAt     time.Time
 }
 
-func NewEmotionalDiaryEntity(id int64, createdAt time.Time, entity EmotionalDiary) EmotionalDiary {
-	return EmotionalDiary{
+func NewEmotionalDiaryEntity(id int64, createdAt time.Time, entity EmotionalInfo) EmotionalInfo {
+	return EmotionalInfo{
 		id:            id,
 		UserID:        entity.UserID,
 		EmotionalRate: entity.EmotionalRate,
@@ -40,15 +45,15 @@ func NewEmotionalDiaryEntity(id int64, createdAt time.Time, entity EmotionalDiar
 	}
 }
 
-func (e *EmotionalDiary) ID() int64 {
+func (e *EmotionalInfo) ID() int64 {
 	return e.id
 }
 
-func (e *EmotionalDiary) CreatedAt() time.Time {
+func (e *EmotionalInfo) CreatedAt() time.Time {
 	return e.createdAt
 }
 
-func (e *EmotionalDiary) Validate() error {
+func (e *EmotionalInfo) Validate() error {
 	if e.UserID <= 0 {
 		return ErrInvalidUserID
 	}
@@ -58,4 +63,50 @@ func (e *EmotionalDiary) Validate() error {
 	}
 
 	return nil
+}
+
+type EmotionalInfos []EmotionalInfo
+
+const dateFormat = "2006-01-02"
+
+func (e EmotionalInfos) Visualize() ([]byte, error) {
+	line := charts.NewLine()
+	line.SetGlobalOptions(
+		charts.WithTooltipOpts(opts.Tooltip{
+			Show: true,
+		}),
+		charts.WithDataZoomOpts(opts.DataZoom{
+			Type:       "",
+			Start:      0,
+			End:        0,
+			Throttle:   0,
+			XAxisIndex: nil,
+			YAxisIndex: nil,
+		}),
+		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}))
+	line.SetXAxis(getAxisMarks(e)).
+		AddSeries("Emotional wellness", dataToLineData(e)).
+		SetSeriesOptions(charts.WithLineChartOpts(opts.LineChart{Smooth: true}))
+
+	b := bytes.NewBuffer([]byte{})
+	if err := line.Render(b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+func getAxisMarks(data []EmotionalInfo) []string {
+	result := make([]string, 0, len(data))
+	for _, elem := range data {
+		result = append(result, elem.ReferToDate.Format(dateFormat))
+	}
+	return result
+}
+
+func dataToLineData(data []EmotionalInfo) []opts.LineData {
+	result := make([]opts.LineData, 0)
+	for _, elem := range data {
+		result = append(result, opts.LineData{Value: elem.EmotionalRate})
+	}
+	return result
 }
